@@ -34,6 +34,7 @@ resource "helm_release" "rancher" {
   chart     = var.rancher_chart
   version   = "v${local.rancher_version}"
   namespace = "cattle-system"
+  create_namespace = true
 
   set {
     name  = "hostname"
