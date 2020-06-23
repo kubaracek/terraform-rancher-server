@@ -204,7 +204,7 @@ resource "aws_instance" "rancher_worker" {
 
   root_block_device {
     volume_type = "gp2"
-    volume_size = "50"
+    volume_size = "20"
   }
 
   tags = merge({ Name = "${local.name}-worker-${count.index}" }, local.rancher2_worker_tags)
@@ -232,9 +232,9 @@ resource "aws_elb" "rancher" {
   health_check {
     healthy_threshold   = 2
     unhealthy_threshold = 2
-    timeout             = 2
+    timeout             = 10
     target              = "tcp:80"
-    interval            = 5
+    interval            = 10
   }
 
   instances    = local.use_asgs_for_rancher_infra ? null : aws_instance.rancher_worker.*.id
@@ -249,31 +249,9 @@ resource "aws_lb" "rancher_api" {
   load_balancer_type = "network"
   subnets            = local.rancher2_master_subnet_ids
 
-  enable_deletion_protection = true
+  enable_deletion_protection = false
 
   tags = merge({ Name = "${local.name}-api" }, var.rancher2_custom_tags)
-}
-
-resource "aws_lb_listener" "rancher_api_https" {
-  load_balancer_arn = aws_lb.rancher_api.arn
-  port              = "443"
-  protocol          = "TCP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.rancher_api.arn
-  }
-}
-
-resource "aws_lb_listener" "rancher_api_https2" {
-  load_balancer_arn = aws_lb.rancher_api.arn
-  port              = "6443"
-  protocol          = "TCP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.rancher_api.arn
-  }
 }
 
 resource "aws_lb_target_group" "rancher_api" {
@@ -291,7 +269,7 @@ resource "aws_lb_target_group_attachment" "rancher_api" {
 
 resource "aws_route53_record" "rancher" {
   zone_id  = data.aws_route53_zone.dns_zone.zone_id
-  name     = "${local.name}.${local.domain}"
+  name     = "${local.host}.${local.domain}"
   type     = "A"
   provider = aws.r53
 
@@ -300,15 +278,6 @@ resource "aws_route53_record" "rancher" {
     zone_id                = aws_elb.rancher.zone_id
     evaluate_target_health = true
   }
-}
-
-resource "aws_route53_record" "rancher_api" {
-  zone_id  = data.aws_route53_zone.dns_zone.zone_id
-  name     = "api.${local.name}.${local.domain}"
-  ttl      = 60
-  type     = "CNAME"
-  provider = aws.r53
-  records  = [aws_lb.rancher_api.dns_name]
 }
 
 ########################################

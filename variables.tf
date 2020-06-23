@@ -60,6 +60,11 @@ variable "name" {
   description = "Name for deployment"
 }
 
+variable "host" {
+  type    = string
+  description = "Host to be used for rancher server"
+}
+
 variable "github_client_id" {
   type        = string
   default     = ""
